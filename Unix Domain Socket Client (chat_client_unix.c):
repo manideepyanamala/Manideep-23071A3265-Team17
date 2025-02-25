@@ -1,0 +1,53 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
+#define SOCKET_PATH "/tmp/chat_server.sock"
+#define BUFFER_SIZE 1024
+
+int main() {
+    int client_socket;
+    struct sockaddr_un server_addr;
+    char buffer[BUFFER_SIZE];
+    int n;
+
+    if ((client_socket = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+        perror("Socket creation failed");
+        exit(1);
+    }
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sun_family = AF_UNIX;
+    strcpy(server_addr.sun_path, SOCKET_PATH);
+
+    if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Connection failed");
+        exit(1);
+    }
+
+    printf("Connected to the server. Start chatting!\n");
+
+    while (1) {
+        printf("You: ");
+        fgets(buffer, sizeof(buffer), stdin);
+
+        if (strncmp(buffer, "exit", 4) == 0) {
+            break;
+        }
+
+        write(client_socket, buffer, strlen(buffer));
+
+        n = read(client_socket, buffer, sizeof(buffer));
+        if (n <= 0) {
+            break;
+        }
+
+        printf("Server: %s", buffer);
+    }
+
+    close(client_socket);
+    return 0;
+}
